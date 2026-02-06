@@ -875,6 +875,91 @@
             background: #a93226;
             transform: scale(0.97);
         }
+
+        /* Month Picker Modal */
+        .month-picker-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .month-picker-btn {
+            padding: 12px 8px;
+            border: 2px solid #e8e8e8;
+            border-radius: 10px;
+            background: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a1a2e;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .month-picker-btn:active {
+            transform: scale(0.95);
+        }
+
+        .month-picker-btn.selected {
+            background: #2a9d8f;
+            color: #ffffff;
+            border-color: #2a9d8f;
+        }
+
+        .year-selector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .year-selector button {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid #e8e8e8;
+            background: #ffffff;
+            color: #2a9d8f;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .year-selector button:active {
+            transform: scale(0.9);
+            background: #f0f0f0;
+        }
+
+        .year-selector .year-label {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a1a2e;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .month-picker-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 28px 24px;
+            max-width: 360px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            animation: modalIn 0.25s ease;
+        }
+
+        .month-picker-card h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
@@ -966,6 +1051,19 @@
     </div>
 </div>
 
+<!-- Month Picker Modal -->
+<div class="modal-overlay" id="monthPickerModal">
+    <div class="month-picker-card">
+        <h3>Ay Seçin</h3>
+        <div class="year-selector">
+            <button id="pickerPrevYear">&lsaquo;</button>
+            <div class="year-label" id="pickerYearLabel"></div>
+            <button id="pickerNextYear">&rsaquo;</button>
+        </div>
+        <div class="month-picker-grid" id="monthPickerGrid"></div>
+    </div>
+</div>
+
 <script>
     // ==================== DATA ====================
     const ALL_NURSES = [
@@ -985,14 +1083,31 @@
     let selectedYear = new Date().getFullYear();
     let selectedNurses = new Set(ALL_NURSES);
     let shiftData = {}; // { "Nurse Name": [ { day, hours, type } ] }
+    let pickerYear = new Date().getFullYear();
+    let monthPickerCallback = null; // called after month is picked
 
     // ==================== INIT ====================
     function init() {
-        loadFromStorage();
-        renderNurseGrid();
-        updateMonthLabel();
-        updateSelectedCount();
         setupEventListeners();
+
+        // Check if there's existing data for current month
+        const hasData = localStorage.getItem(getStorageKey());
+        if (hasData) {
+            loadFromStorage();
+            renderNurseGrid();
+            updateMonthLabel();
+            updateSelectedCount();
+        } else {
+            // First time or no data: ask for month
+            showMonthPicker(function(month, year) {
+                selectedMonth = month;
+                selectedYear = year;
+                loadFromStorage();
+                renderNurseGrid();
+                updateMonthLabel();
+                updateSelectedCount();
+            });
+        }
     }
 
     // ==================== STORAGE ====================
@@ -1033,6 +1148,37 @@
         document.getElementById('monthLabel3').textContent = label;
     }
 
+    // ==================== MONTH PICKER ====================
+    function showMonthPicker(callback) {
+        monthPickerCallback = callback;
+        pickerYear = new Date().getFullYear();
+        renderMonthPicker();
+        document.getElementById('monthPickerModal').classList.add('visible');
+    }
+
+    function hideMonthPicker() {
+        document.getElementById('monthPickerModal').classList.remove('visible');
+        monthPickerCallback = null;
+    }
+
+    function renderMonthPicker() {
+        document.getElementById('pickerYearLabel').textContent = pickerYear;
+        const grid = document.getElementById('monthPickerGrid');
+        grid.innerHTML = '';
+        MONTHS_TR.forEach((name, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'month-picker-btn';
+            btn.textContent = name;
+            btn.addEventListener('click', () => {
+                if (monthPickerCallback) {
+                    monthPickerCallback(idx, pickerYear);
+                }
+                hideMonthPicker();
+            });
+            grid.appendChild(btn);
+        });
+    }
+
     // ==================== RESET / NEW MONTH ====================
     function showResetModal() {
         document.getElementById('resetModal').classList.add('visible');
@@ -1045,21 +1191,23 @@
     function resetForNewMonth() {
         // Clear current data from storage
         localStorage.removeItem(getStorageKey());
-
-        // Reset to current date
-        selectedMonth = new Date().getMonth();
-        selectedYear = new Date().getFullYear();
-
-        // Reset in-memory data
-        selectedNurses = new Set(ALL_NURSES);
-        shiftData = {};
-
-        // Update UI
-        updateMonthLabel();
-        renderNurseGrid();
-        updateSelectedCount();
         hideResetModal();
-        goToScreen(1);
+
+        // Show month picker for new month
+        showMonthPicker(function(month, year) {
+            selectedMonth = month;
+            selectedYear = year;
+
+            // Reset in-memory data
+            selectedNurses = new Set(ALL_NURSES);
+            shiftData = {};
+
+            // Update UI
+            updateMonthLabel();
+            renderNurseGrid();
+            updateSelectedCount();
+            goToScreen(1);
+        });
     }
 
     // ==================== SCREEN 1: NURSE SELECTION ====================
@@ -1438,6 +1586,16 @@
         // Close modal on overlay click
         document.getElementById('resetModal').addEventListener('click', (e) => {
             if (e.target === e.currentTarget) hideResetModal();
+        });
+
+        // Month picker year navigation
+        document.getElementById('pickerPrevYear').addEventListener('click', () => {
+            pickerYear--;
+            renderMonthPicker();
+        });
+        document.getElementById('pickerNextYear').addEventListener('click', () => {
+            pickerYear++;
+            renderMonthPicker();
         });
 
         // Initial bottom bar
