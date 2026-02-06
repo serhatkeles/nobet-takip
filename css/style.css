@@ -324,6 +324,28 @@ body {
     gap: 10px;
 }
 
+.btn-count-confirm {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: #2a9d8f;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+
+.btn-count-confirm:active {
+    transform: scale(0.9);
+    background: #238b7e;
+}
+
 .shift-count-badge {
     background: #2a9d8f;
     color: #ffffff;

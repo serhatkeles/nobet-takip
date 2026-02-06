@@ -26,6 +26,7 @@ function renderShiftEntry() {
                            min="1" max="31" placeholder="Kaç?"
                            title="Nöbet sayısı girin"
                            data-nurse-count="${name}">
+                    <button class="btn-count-confirm" title="Nöbet oluştur">&#10003;</button>
                     <div class="shift-count-badge ${shiftCount === 0 ? 'empty' : ''}">${shiftCount}</div>
                     <span class="chevron-icon">&#9654;</span>
                 </div>
@@ -47,10 +48,13 @@ function renderShiftEntry() {
             card.classList.toggle('open');
         });
 
-        // Shift count input
+        // Shift count input + confirm button
         const countInput = card.querySelector('.shift-count-input');
+        const countConfirmBtn = card.querySelector('.btn-count-confirm');
         countInput.addEventListener('click', (e) => e.stopPropagation());
-        countInput.addEventListener('change', () => {
+        countConfirmBtn.addEventListener('click', (e) => e.stopPropagation());
+
+        function applyShiftCount() {
             const desired = parseInt(countInput.value);
             if (isNaN(desired) || desired < 1) return;
             const current = shiftData[name].length;
@@ -64,7 +68,10 @@ function renderShiftEntry() {
                 saveToStorage();
             }
             countInput.value = '';
-        });
+        }
+
+        countInput.addEventListener('change', applyShiftCount);
+        countConfirmBtn.addEventListener('click', applyShiftCount);
 
         // Render existing shifts
         shiftData[name].forEach((shift, idx) => {
@@ -132,13 +139,13 @@ function createShiftRow(nurseName, index, shift) {
         <div class="shift-field">
             <label>Gün</label>
             <input type="number" inputmode="numeric" min="1" max="31"
-                   placeholder="1-31" value="${shift.day || ''}"
+                   value="${shift.day || ''}"
                    data-field="day">
         </div>
         <div class="shift-field">
             <label>Saat</label>
             <input type="number" inputmode="numeric" min="1" max="24"
-                   placeholder="Saat" value="${shift.hours || ''}"
+                   value="${shift.hours || ''}"
                    data-field="hours">
         </div>
         <div class="shift-field">
