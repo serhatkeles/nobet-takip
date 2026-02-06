@@ -23,7 +23,7 @@ function renderShiftEntry() {
                 </div>
                 <div class="header-right">
                     <input type="number" class="shift-count-input" inputmode="numeric"
-                           min="1" max="31" placeholder="Kaç?"
+                           min="1" max="31" placeholder="Sayı"
                            title="Nöbet sayısı girin"
                            data-nurse-count="${name}">
                     <button class="btn-count-confirm" title="Nöbet oluştur">&#10003;</button>
@@ -43,8 +43,9 @@ function renderShiftEntry() {
 
         // Toggle open/close on header click
         header.addEventListener('click', (e) => {
-            // Don't toggle when clicking the count input
+            // Don't toggle when clicking the count input or confirm button
             if (e.target.classList.contains('shift-count-input')) return;
+            if (e.target.closest('.btn-count-confirm')) return;
             card.classList.toggle('open');
         });
 
@@ -90,12 +91,11 @@ function renderShiftEntry() {
         });
         body.appendChild(addBtn);
 
-        // Save/close button
+        // Close section button (data is auto-saved on every input change)
         const saveBtn = document.createElement('button');
         saveBtn.className = 'btn-save-section';
         saveBtn.textContent = 'Kaydet';
         saveBtn.addEventListener('click', () => {
-            saveToStorage();
             card.classList.remove('open');
             updateShiftBadge(card, name);
         });
