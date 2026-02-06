@@ -876,89 +876,55 @@
             transform: scale(0.97);
         }
 
-        /* Month Picker Modal */
-        .month-picker-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 20px;
-        }
-
-        .month-picker-btn {
-            padding: 12px 8px;
-            border: 2px solid #e8e8e8;
-            border-radius: 10px;
-            background: #ffffff;
-            font-size: 14px;
-            font-weight: 600;
-            color: #1a1a2e;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .month-picker-btn:active {
-            transform: scale(0.95);
-        }
-
-        .month-picker-btn.selected {
-            background: #2a9d8f;
-            color: #ffffff;
-            border-color: #2a9d8f;
-        }
-
-        .year-selector {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            margin-bottom: 16px;
-        }
-
-        .year-selector button {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: 2px solid #e8e8e8;
-            background: #ffffff;
-            color: #2a9d8f;
-            font-size: 18px;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-
-        .year-selector button:active {
-            transform: scale(0.9);
-            background: #f0f0f0;
-        }
-
-        .year-selector .year-label {
-            font-size: 20px;
-            font-weight: 700;
-            color: #1a1a2e;
-            min-width: 60px;
-            text-align: center;
-        }
-
-        .month-picker-card {
+        /* Month Input Modal */
+        .month-input-card {
             background: #ffffff;
             border-radius: 16px;
             padding: 28px 24px;
-            max-width: 360px;
+            max-width: 340px;
             width: 100%;
             text-align: center;
             box-shadow: 0 8px 30px rgba(0,0,0,0.15);
             animation: modalIn 0.25s ease;
         }
 
-        .month-picker-card h3 {
+        .month-input-card h3 {
             font-size: 18px;
             font-weight: 700;
             color: #1a1a2e;
+            margin-bottom: 6px;
+        }
+
+        .month-input-card .hint {
+            font-size: 13px;
+            color: #7f8c9b;
             margin-bottom: 20px;
+        }
+
+        .month-text-input {
+            width: 100%;
+            height: 50px;
+            border: 2px solid #e8e8e8;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a2e;
+            background: #ffffff;
+            outline: none;
+            transition: border-color 0.2s;
+            margin-bottom: 8px;
+        }
+
+        .month-text-input:focus {
+            border-color: #2a9d8f;
+        }
+
+        .month-input-error {
+            font-size: 13px;
+            color: #c0392b;
+            min-height: 20px;
+            margin-bottom: 16px;
         }
     </style>
 </head>
@@ -1051,16 +1017,14 @@
     </div>
 </div>
 
-<!-- Month Picker Modal -->
-<div class="modal-overlay" id="monthPickerModal">
-    <div class="month-picker-card">
-        <h3>Ay Seçin</h3>
-        <div class="year-selector">
-            <button id="pickerPrevYear">&lsaquo;</button>
-            <div class="year-label" id="pickerYearLabel"></div>
-            <button id="pickerNextYear">&rsaquo;</button>
-        </div>
-        <div class="month-picker-grid" id="monthPickerGrid"></div>
+<!-- Month Input Modal -->
+<div class="modal-overlay" id="monthInputModal">
+    <div class="month-input-card">
+        <h3>Hangi Ay?</h3>
+        <div class="hint">Ay ve yil girin</div>
+        <input type="text" class="month-text-input" id="monthTextInput" placeholder="Ornek: Subat 2026" autocomplete="off">
+        <div class="month-input-error" id="monthInputError"></div>
+        <button class="btn-primary" id="monthInputConfirm">Tamam</button>
     </div>
 </div>
 
@@ -1083,25 +1047,30 @@
     let selectedYear = new Date().getFullYear();
     let selectedNurses = new Set(ALL_NURSES);
     let shiftData = {}; // { "Nurse Name": [ { day, hours, type } ] }
-    let pickerYear = new Date().getFullYear();
-    let monthPickerCallback = null; // called after month is picked
+    let monthInputCallback = null;
 
     // ==================== INIT ====================
     function init() {
         setupEventListeners();
 
-        // Check if there's existing data for current month
-        const hasData = localStorage.getItem(getStorageKey());
-        if (hasData) {
+        // Check if there's a saved current month
+        const savedMonth = localStorage.getItem('nobet_current_month');
+        if (savedMonth) {
+            try {
+                const parsed = JSON.parse(savedMonth);
+                selectedMonth = parsed.month;
+                selectedYear = parsed.year;
+            } catch(e) {}
             loadFromStorage();
             renderNurseGrid();
             updateMonthLabel();
             updateSelectedCount();
         } else {
-            // First time or no data: ask for month
-            showMonthPicker(function(month, year) {
+            // First time: ask for month
+            showMonthInput(function(month, year) {
                 selectedMonth = month;
                 selectedYear = year;
+                localStorage.setItem('nobet_current_month', JSON.stringify({ month, year }));
                 loadFromStorage();
                 renderNurseGrid();
                 updateMonthLabel();
@@ -1148,35 +1117,66 @@
         document.getElementById('monthLabel3').textContent = label;
     }
 
-    // ==================== MONTH PICKER ====================
-    function showMonthPicker(callback) {
-        monthPickerCallback = callback;
-        pickerYear = new Date().getFullYear();
-        renderMonthPicker();
-        document.getElementById('monthPickerModal').classList.add('visible');
+    // ==================== MONTH INPUT ====================
+    // Normalize Turkish chars for matching
+    const MONTHS_NORMALIZED = MONTHS_TR.map(m => m.toLowerCase()
+        .replace(/ş/g,'s').replace(/ü/g,'u').replace(/ö/g,'o')
+        .replace(/ç/g,'c').replace(/ı/g,'i').replace(/ğ/g,'g')
+        .replace(/â/g,'a'));
+
+    function parseMonthInput(text) {
+        text = text.trim().toLowerCase()
+            .replace(/ş/g,'s').replace(/ü/g,'u').replace(/ö/g,'o')
+            .replace(/ç/g,'c').replace(/ı/g,'i').replace(/ğ/g,'g')
+            .replace(/â/g,'a');
+
+        // Try to find month name and year
+        let foundMonth = -1;
+        let foundYear = -1;
+
+        for (let i = 0; i < MONTHS_NORMALIZED.length; i++) {
+            if (text.includes(MONTHS_NORMALIZED[i])) {
+                foundMonth = i;
+                break;
+            }
+        }
+
+        const yearMatch = text.match(/\b(20\d{2})\b/);
+        if (yearMatch) {
+            foundYear = parseInt(yearMatch[1]);
+        }
+
+        if (foundMonth === -1) return null;
+        if (foundYear === -1) foundYear = new Date().getFullYear();
+
+        return { month: foundMonth, year: foundYear };
     }
 
-    function hideMonthPicker() {
-        document.getElementById('monthPickerModal').classList.remove('visible');
-        monthPickerCallback = null;
+    function showMonthInput(callback) {
+        monthInputCallback = callback;
+        const input = document.getElementById('monthTextInput');
+        input.value = '';
+        document.getElementById('monthInputError').textContent = '';
+        document.getElementById('monthInputModal').classList.add('visible');
+        setTimeout(() => input.focus(), 300);
     }
 
-    function renderMonthPicker() {
-        document.getElementById('pickerYearLabel').textContent = pickerYear;
-        const grid = document.getElementById('monthPickerGrid');
-        grid.innerHTML = '';
-        MONTHS_TR.forEach((name, idx) => {
-            const btn = document.createElement('button');
-            btn.className = 'month-picker-btn';
-            btn.textContent = name;
-            btn.addEventListener('click', () => {
-                if (monthPickerCallback) {
-                    monthPickerCallback(idx, pickerYear);
-                }
-                hideMonthPicker();
-            });
-            grid.appendChild(btn);
-        });
+    function hideMonthInput() {
+        document.getElementById('monthInputModal').classList.remove('visible');
+        monthInputCallback = null;
+    }
+
+    function confirmMonthInput() {
+        const input = document.getElementById('monthTextInput');
+        const result = parseMonthInput(input.value);
+        if (!result) {
+            document.getElementById('monthInputError').textContent = 'Ay bulunamadi. Ornek: Subat 2026';
+            return;
+        }
+        if (monthInputCallback) {
+            monthInputCallback(result.month, result.year);
+        }
+        hideMonthInput();
     }
 
     // ==================== RESET / NEW MONTH ====================
@@ -1191,12 +1191,14 @@
     function resetForNewMonth() {
         // Clear current data from storage
         localStorage.removeItem(getStorageKey());
+        localStorage.removeItem('nobet_current_month');
         hideResetModal();
 
-        // Show month picker for new month
-        showMonthPicker(function(month, year) {
+        // Show month input for new month
+        showMonthInput(function(month, year) {
             selectedMonth = month;
             selectedYear = year;
+            localStorage.setItem('nobet_current_month', JSON.stringify({ month, year }));
 
             // Reset in-memory data
             selectedNurses = new Set(ALL_NURSES);
@@ -1588,14 +1590,10 @@
             if (e.target === e.currentTarget) hideResetModal();
         });
 
-        // Month picker year navigation
-        document.getElementById('pickerPrevYear').addEventListener('click', () => {
-            pickerYear--;
-            renderMonthPicker();
-        });
-        document.getElementById('pickerNextYear').addEventListener('click', () => {
-            pickerYear++;
-            renderMonthPicker();
+        // Month input confirm
+        document.getElementById('monthInputConfirm').addEventListener('click', confirmMonthInput);
+        document.getElementById('monthTextInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') confirmMonthInput();
         });
 
         // Initial bottom bar
@@ -1603,8 +1601,17 @@
     }
 
     // ==================== SERVICE WORKER ====================
+    // Unregister any old service workers to prevent caching issues
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js').catch(() => {});
+        navigator.serviceWorker.getRegistrations().then(regs => {
+            regs.forEach(r => r.unregister());
+        });
+        // Clear all caches
+        if ('caches' in window) {
+            caches.keys().then(keys => {
+                keys.forEach(k => caches.delete(k));
+            });
+        }
     }
 
     // ==================== START ====================
