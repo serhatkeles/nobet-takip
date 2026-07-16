@@ -62,7 +62,7 @@ function renderShiftEntry() {
             if (desired > current) {
                 const toAdd = desired - current;
                 for (let i = 0; i < toAdd; i++) {
-                    shiftData[name].push({ day: '', hours: '', type: 'gunduz' });
+                    shiftData[name].push({ day: '', hours: '', type: 'gece' });
                 }
                 rebuildNurseShifts(card, name);
                 card.classList.add('open');
@@ -84,7 +84,7 @@ function renderShiftEntry() {
         addBtn.className = 'btn-add-shift';
         addBtn.innerHTML = '<span style="font-size:20px">+</span> Nöbet Ekle';
         addBtn.addEventListener('click', () => {
-            shiftData[name].push({ day: '', hours: '', type: 'gunduz' });
+            shiftData[name].push({ day: '', hours: '', type: 'gece' });
             rebuildNurseShifts(card, name);
             card.classList.add('open');
             saveToStorage();
@@ -151,10 +151,10 @@ function createShiftRow(nurseName, index, shift) {
         <div class="shift-field">
             <label>Tip</label>
             <div class="shift-type-toggle">
-                <button class="shift-type-btn ${shift.type === 'gunduz' ? 'active-day' : ''}"
-                        data-type="gunduz">Gündüz</button>
                 <button class="shift-type-btn ${shift.type === 'gece' ? 'active-night' : ''}"
                         data-type="gece">Gece</button>
+                <button class="shift-type-btn ${shift.type === 'gunduz' ? 'active-day' : ''}"
+                        data-type="gunduz">Gündüz</button>
             </div>
         </div>
         <button class="btn-delete-shift" title="Sil">&times;</button>

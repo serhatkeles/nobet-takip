@@ -2,8 +2,9 @@
 const ALL_NURSES = [
     'Fatma Keleş', 'Tuğçe Baştürk', 'Meral Tanyeli', 'Ulviye Çaylak',
     'Ayşe Ünal Söylemez', 'Filiz Çetinkaya', 'Nilüfer Karakoç', 'Ayşe Ayazlı',
-    'Şeniz Çelik', 'Seher Beğce', 'Semre Elbeyi', 'Burcu Mardin',
-    'Dilara Gürdal', 'Gül Görhan', 'Muharrem Özden', 'Kürşat Solak'
+    'Şeniz Çelik', 'Seher Beğce', 'Semre Elbeyi',
+    'Dilara Gürdal', 'Gül Görhan', 'Muharrem Özden', 'Kürşat Solak',
+    'Sevim Nur Yüzlük', 'Canseli Bakar'
 ];
 
 const MONTHS_TR = [
